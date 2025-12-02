@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -27,7 +28,8 @@ jobs:
         run: |
           python sebi_fetch.py
           COUNT=$(python - << 'PY'
-          import json; print(json.load(open("out.json"))["count"])
+          import json
+          print(json.load(open("out.json"))["count"])
           PY
           )
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
