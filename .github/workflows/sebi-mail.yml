@@ -1,0 +1,47 @@
+name: SEBI Mailer (Every 3 Hours)
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"   # every 3 hours (UTC)
+  workflow_dispatch:        # allow manual run
+
+jobs:
+  send-mail:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install feedparser requests beautifulsoup4 python-dateutil
+
+      - name: Fetch latest SEBI items
+        id: fetch
+        run: |
+          python sebi_fetch.py
+          COUNT=$(python - << 'PY'
+          import json; print(json.load(open("out.json"))["count"])
+          PY
+          )
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Send Email (via Gmail)
+        if: ${{ steps.fetch.outputs.count != '0' }}
+        uses: dawidd6/action-send-mail@v6
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: SEBI: New updates (last 3 hours) — ${{ steps.fetch.outputs.count }} item(s)
+          to: ${{ secrets.TO_EMAIL }}
+          from: SEBI Bot <${{ secrets.GMAIL_USERNAME }}>
+          html_body: file://out.html
